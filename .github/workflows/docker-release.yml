@@ -16,7 +16,7 @@ on:
         default: false
         type: boolean
       push_to_dockerhub:
-        description: '是否推送到 Docker Hub（需要配置 DOCKERHUB_USERNAME 和 DOCKERHUB_TOKEN secrets）'
+        description: '是否推送到 Docker Hub（需先配置 DOCKERHUB_USERNAME 和 DOCKERHUB_TOKEN secrets）'
         required: false
         default: false
         type: boolean
@@ -40,6 +40,14 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Check Docker Hub secrets
+        if: github.event.inputs.push_to_dockerhub == 'true' || github.event_name == 'push'
+        run: |
+          if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ] || [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+            echo "::error::推送到 Docker Hub 需要先在仓库 Settings → Secrets → Actions 配置 DOCKERHUB_USERNAME 和 DOCKERHUB_TOKEN"
+            exit 1
+          fi
+
       - name: Login to Docker Hub
         if: github.event.inputs.push_to_dockerhub == 'true' || github.event_name == 'push'
         uses: docker/login-action@v3
@@ -58,12 +66,14 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Release version: $VERSION"
 
-      - name: Build and push multi-arch Docker image
+      # 多架构镜像推送 Docker Hub（仅当配置了 secrets 并要求推送时）
+      - name: Build and push multi-arch image (amd64 + arm64)
+        if: github.event.inputs.push_to_dockerhub == 'true' || github.event_name == 'push'
         uses: docker/build-push-action@v5
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event.inputs.push_to_dockerhub == 'true' || github.event_name == 'push' }}
+          push: true
           no-cache: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
@@ -75,12 +85,19 @@ jobs:
           echo "=== Multi-arch image inspection ==="
           docker buildx imagetools inspect ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ steps.rel.outputs.version }}
 
-      # 本地镜像文件（amd64）附带到 Release，便于无 Docker Hub 环境离线导入
-      - name: Build and save local image (amd64)
+      # 本地离线镜像：amd64 + arm64，附到 Release
+      - name: Build and save amd64 image
         run: |
-          docker buildx build --platform linux/amd64 -t ${IMAGE_NAME}:${{ steps.rel.outputs.version }} --load .
-          docker save ${IMAGE_NAME}:${{ steps.rel.outputs.version }} | gzip > smsboard-docker-amd64-${{ steps.rel.outputs.version }}.tar.gz
-          ls -lh smsboard-docker-amd64-*.tar.gz
+          docker buildx build --platform linux/amd64 -t ${IMAGE_NAME}:${{ steps.rel.outputs.version }}-amd64 --load .
+          docker save ${IMAGE_NAME}:${{ steps.rel.outputs.version }}-amd64 | gzip > smsboard-docker-amd64-${{ steps.rel.outputs.version }}.tar.gz
+
+      - name: Build and save arm64 image
+        run: |
+          docker buildx build --platform linux/arm64 -t ${IMAGE_NAME}:${{ steps.rel.outputs.version }}-arm64 --load .
+          docker save ${IMAGE_NAME}:${{ steps.rel.outputs.version }}-arm64 | gzip > smsboard-docker-arm64-${{ steps.rel.outputs.version }}.tar.gz
+
+      - name: Verify artifacts
+        run: ls -lh smsboard-docker-*.tar.gz
 
       - name: Create GitHub Release
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.create_release == true)
@@ -110,15 +127,16 @@ jobs:
 
             ### 支持架构
             - **AMD64** (x86_64) - 适用于普通 PC、服务器、云主机
-            - **ARM64** (aarch64) - 适用于树莓派、ARM 服务器、NAS
+            - **ARM64** (aarch64) - 适用于树莓派、ARM 服务器、NAS（含甲骨文 ARM 免费层）
 
             ### 离线镜像
-            - `smsboard-docker-amd64-*.tar.gz`：本地镜像文件，导入方式：
-              `docker load -i smsboard-docker-amd64-*.tar.gz`
+            - `smsboard-docker-amd64-*.tar.gz` / `smsboard-docker-arm64-*.tar.gz`
+            - 导入方式：`docker load -i smsboard-docker-arm64-*.tar.gz`
 
             ### Cloudflare Worker 部署
-            见 README「Cloudflare Workers 部署」章节（免服务器，数据存 R2）。
+            见 README「Cloudflare Pages 部署」章节（免服务器，数据存 R2）。
           draft: false
           prerelease: false
           files: |
             smsboard-docker-amd64-*.tar.gz
+            smsboard-docker-arm64-*.tar.gz
