@@ -8,3 +8,5 @@ frontend/build.log
 worker/node_modules/
 worker/.wrangler/
 worker/wrangler-dev.log
+.wrangler/
+wrangler-dev.log
