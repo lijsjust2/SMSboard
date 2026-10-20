@@ -98,26 +98,40 @@ http://<看板服务器IP>:9990/api/push/<推送Key>
 2. **Release 附带离线镜像**：触发时自动构建 amd64 本地镜像，`docker save` 打包为 `smsboard-docker-amd64-<版本>.tar.gz` 附到 GitHub Release，无公网环境可 `docker load -i` 离线导入
 3. 支持手动 `workflow_dispatch`：可只构建、可同时创建 Release、可选择是否推送 Hub
 
-## 五、Cloudflare Workers 部署（免服务器，R2 存储）
+## 五、Cloudflare Pages 部署（edgetunnel 同款，免服务器）
 
-Worker 版是同 API 的 JS 后端（`worker/src/index.js`），前端 SPA 已预构建并提交在 `worker/dist`（由 Workers 静态资源托管），数据全部存 **R2**。**无需任何构建，拉取仓库即可部署**：
+Worker 版是同 API 的 JS 后端（`worker/dist/_worker.js`，Pages 高级模式），前端已预构建提交在 `worker/dist`，数据存 **R2**。**零构建，连接 Git 即可部署**：
 
-### 方式 A：一键部署按钮（最方便）
+### 部署步骤
 
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/lijsjust2/SMSboard)
+1. **Fork 本仓库**到你的 GitHub 账号（欢迎点个 Star ⭐）
+2. Cloudflare Dashboard → **Workers 和 Pages** → 创建应用程序 → **Pages** → **连接到 Git** → 选中你 Fork 的项目 → **开始设置**
+3. 在「设置构建和部署」页面：
+   - 构建命令：**留空**（前端已预构建）
+   - 构建输出目录：**`/worker/dist`**
+   - 展开「环境变量（高级）」→ 添加变量：名称 **`ADMIN`**，值填你的管理员密码 → **保存并部署**
+4. 部署完成后，**绑定 R2 存储**（存消息数据）：
+   - Pages 项目 → **设置** 选项卡 → **绑定** → **+ 添加** → **R2 存储桶**
+   - 变量名称填 **`R2`**，选择一个已有的桶或新建一个（如 `smsboard`）→ **保存后重试部署**
+5. 访问 `https://<项目名>.pages.dev/admin`，输入 `ADMIN` 环境变量里设置的管理员密码即可登录
 
-点击按钮 → 登录 Cloudflare → 选择/创建 R2 资源 → Deploy，全程网页点几下完成。也可以在 Cloudflare Dashboard → Workers & Pages → 创建应用 → 「导入现有 Git 仓库」直接拉取本仓库，零构建配置。
+### 绑定自定义域（可选）
 
-### 方式 B：Fork + GitHub Actions
+Pages 控制台 → **自定义域** 选项卡 → **设置自定义域** → 填入次级域名（如 `sms.yourdomain.com`，不要用根域名）→ 按提示到你的 DNS 服务商添加 CNAME 记录指向 `<项目名>.pages.dev` → **激活域**
 
-1. **Fork 本仓库**到你自己的 GitHub 账号
-2. 创建 Cloudflare API Token：Dashboard → My Profile → API Tokens → 编辑 Cloudflare Workers 模板（需 Worker 部署与 R2 编辑权限），并记下**账户 ID**
-3. 在你 Fork 的仓库 Settings → Secrets and variables → Actions 添加两个 secret：
-   - `CLOUDFLARE_API_TOKEN`
-   - `CLOUDFLARE_ACCOUNT_ID`
-4. 仓库 Actions 页 →「Deploy Cloudflare Worker」→ Run workflow
+### 手机端配置
 
-### 部署后配置
+推送地址为：`https://<你的域名或 pages.dev 域>/api/push/<Key>`。Key 在看板「系统设置 → 推送 Key 管理」查看（用 ADMIN 部署时已自动生成），其余配置与 Docker 版完全相同。
+
+### Worker 版差异
+
+- 无 WebSocket：页面数据自动降级为轮询（消息页 20 秒/仪表盘 30 秒），顶部状态灯显示"未连接"属正常
+- 无 PushPlus 离线推送：在线/离线状态在打开页面时实时推导
+- 数据在 R2 桶内：`config/settings.json` 为配置，`data/` 为消息与心跳
+
+> 前端或后端代码更新后，`worker/dist` 需要同步重建（Actions 的 Deploy workflow 会自动做，或本地 `npm run build` 后复制）。
+>
+> 也可以用一键按钮部署为标准 Worker：<https://deploy.workers.cloudflare.com/?url=https://github.com/lijsjust2/SMSboard>，或用仓库自带的「Deploy Cloudflare Worker」workflow 手动部署。
 
 1. 访问 `https://<worker名>.<子域>.workers.dev`，首次进入设置管理员账号（推送 Key 自动生成）
 2. 「系统设置」第 1 步的推送地址变为：`https://<worker域>/api/push/<Key>`，手机端配置方法完全相同

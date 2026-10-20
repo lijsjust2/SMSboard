@@ -19,6 +19,7 @@ const router = createRouter({
   routes: [
     { path: '/setup', component: SetupView },
     { path: '/login', component: LoginView },
+    { path: '/admin', redirect: '/login' },
     { path: '/', component: DashboardView, meta: { auth: true } },
     { path: '/messages', component: MessagesView, meta: { auth: true } },
     { path: '/calls', component: MessagesView, meta: { auth: true, callMode: true } },

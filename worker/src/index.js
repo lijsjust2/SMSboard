@@ -28,6 +28,17 @@ const DEFAULT_SETTINGS = {
 export default {
   async fetch(request, env) {
     try {
+      // CF Pages 的 ADMIN 环境变量：存在且未初始化时自动创建管理员（admin / ADMIN密码）
+      if (env.ADMIN) {
+        const s0 = await getSettings(env)
+        if (!s0.admin_password_hash) {
+          s0.admin_username = 'admin'
+          s0.admin_password_hash = await hashPassword(env.ADMIN)
+          s0.jwt_secret = randHex(64)
+          s0.push_key = randHex(16)
+          await putSettings(env, s0)
+        }
+      }
       return await handle(request, env)
     } catch (e) {
       return json({ code: 500, msg: String(e && e.message || e) }, 500)
@@ -758,6 +769,18 @@ async function handle(request, env) {
     }
     void nowDay
     return json({ code: 200, items, threshold_minutes: thresholdMin(settings) })
+  }
+
+  // ----- Pages 高级模式：非 API 请求回源静态资源（SPA 回退 index.html）-----
+  if (env.ASSETS) {
+    if (method === 'GET' && path === '/admin') {
+      return Response.redirect(new URL('/login', request.url).toString(), 302)
+    }
+    if (method === 'GET') {
+      const asset = await env.ASSETS.fetch(request)
+      if (asset.status !== 404) return asset
+      return env.ASSETS.fetch(new Request(new URL('/index.html', request.url)))
+    }
   }
 
   return json({ detail: 'Not Found' }, 404)
