@@ -100,21 +100,22 @@ http://<看板服务器IP>:9990/api/push/<推送Key>
 
 ## 五、Cloudflare Workers 部署（免服务器，R2 存储）
 
-Worker 版是同 API 的 JS 后端（`worker/` 目录），前端 SPA 由 Workers 静态资源托管，数据全部存 **R2**。与 edgetunnel 的「Fork + GitHub」部署思路一致：
+Worker 版是同 API 的 JS 后端（`worker/src/index.js`），前端 SPA 已预构建并提交在 `worker/dist`（由 Workers 静态资源托管），数据全部存 **R2**。**无需任何构建，拉取仓库即可部署**：
 
-### 方式 A：Fork + GitHub Actions（推荐）
+### 方式 A：一键部署按钮（最方便）
+
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/lijsjust2/SMSboard)
+
+点击按钮 → 登录 Cloudflare → 选择/创建 R2 资源 → Deploy，全程网页点几下完成。也可以在 Cloudflare Dashboard → Workers & Pages → 创建应用 → 「导入现有 Git 仓库」直接拉取本仓库，零构建配置。
+
+### 方式 B：Fork + GitHub Actions
 
 1. **Fork 本仓库**到你自己的 GitHub 账号
 2. 创建 Cloudflare API Token：Dashboard → My Profile → API Tokens → 编辑 Cloudflare Workers 模板（需 Worker 部署与 R2 编辑权限），并记下**账户 ID**
 3. 在你 Fork 的仓库 Settings → Secrets and variables → Actions 添加两个 secret：
    - `CLOUDFLARE_API_TOKEN`
    - `CLOUDFLARE_ACCOUNT_ID`
-4. 仓库 Actions 页 →「Deploy Cloudflare Worker」→ Run workflow，自动完成：构建前端 → 创建 R2 桶（`smsboard`，已存在则跳过）→ 部署 Worker
-5. 之后每次 push 到 main（涉及 worker/frontend 的改动）都会自动重新部署
-
-### 方式 B：Cloudflare Dashboard 连接仓库
-
-Workers & Pages → 创建 → Workers → 连接 Git 仓库（选你的 Fork），构建配置：部署命令 `npx wrangler deploy`，根目录 `worker`（需先构建前端，或直接用方式 A 更省心）。
+4. 仓库 Actions 页 →「Deploy Cloudflare Worker」→ Run workflow
 
 ### 部署后配置
 

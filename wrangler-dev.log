@@ -1,0 +1,10 @@
+
+ ⛅️ wrangler 4.151.2
+────────────────────
+Your Worker has access to the following bindings:
+Binding                Resource       Mode
+env.R2 (smsboard)      R2 Bucket      local
+
+⎔ Starting local server...
+[wrangler:info] Ready on http://127.0.0.1:8788
+[wrangler:info] GET /api/setup/status 200 OK (74ms)

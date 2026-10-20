@@ -24,11 +24,11 @@ jobs:
           cd frontend
           npm install --no-fund --no-audit
           npm run build
+          rm -rf ../worker/dist
+          cp -r dist ../worker/dist
 
       - name: Create R2 bucket if missing
-        run: |
-          cd worker
-          npx wrangler@4 r2 bucket create smsboard || echo "bucket may already exist"
+        run: npx wrangler@4 r2 bucket create smsboard || echo "bucket may already exist"
 
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v3
@@ -36,4 +36,3 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wrangler-version: '4'
-          workingDirectory: worker
