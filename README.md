@@ -129,7 +129,7 @@ Pages 控制台 → **自定义域** 选项卡 → **设置自定义域** → �
 - 无 PushPlus 离线推送：在线/离线状态在打开页面时实时推导
 - 数据在 R2 桶内：`config/settings.json` 为配置，`data/` 为消息与心跳
 
-> 前端或后端代码更新后，`worker/dist` 需要同步重建（Actions 的 Deploy workflow 会自动做，或本地 `npm run build` 后复制）。
+> 前端或后端代码更新后，`worker/dist` 需要同步重建（Actions 的 Deploy workflow 会自动做；手动操作时：`npm run build` 后把 `frontend/dist` 复制为 `worker/dist`，放回 `_worker.js` 与 `.assetsignore`，缺一不可）。
 >
 > 也可以用一键按钮部署为标准 Worker：<https://deploy.workers.cloudflare.com/?url=https://github.com/lijsjust2/SMSboard>，或用仓库自带的「Deploy Cloudflare Worker」workflow 手动部署。
 

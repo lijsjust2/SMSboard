@@ -26,6 +26,7 @@ jobs:
           npm run build
           rm -rf ../worker/dist
           cp -r dist ../worker/dist
+          echo "_worker.js" > ../worker/dist/.assetsignore
 
       - name: Create R2 bucket if missing
         run: npx wrangler@4 r2 bucket create smsboard || echo "bucket may already exist"
