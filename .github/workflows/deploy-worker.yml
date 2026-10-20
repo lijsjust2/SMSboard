@@ -1,0 +1,44 @@
+name: Deploy Cloudflare Worker
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'worker/**'
+      - 'frontend/**'
+      - '.github/workflows/deploy-worker.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 构建前端（Worker 通过 assets 托管 SPA）
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm install --no-fund --no-audit
+          npm run build
+
+      - name: Create R2 bucket if missing
+        run: |
+          cd worker
+          npx wrangler@4 r2 bucket create smsboard || echo "bucket may already exist"
+
+      - name: Deploy Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker

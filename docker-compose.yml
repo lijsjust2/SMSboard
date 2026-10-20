@@ -1,0 +1,16 @@
+services:
+  smsboard:
+    build: .
+    container_name: smsboard
+    restart: unless-stopped
+    ports:
+      - "9990:9990"
+    environment:
+      # 心跳间隔（分钟）：与手机端定时任务一致
+      - SMSBOARD_HEARTBEAT_INTERVAL_MIN=5
+      # 离线阈值倍数：5 分钟心跳 × 3 = 15 分钟无心跳判离线
+      - SMSBOARD_OFFLINE_MULTIPLIER=3
+      # 局域网未配置 secret 时允许未签名 webhook；公网部署建议改为 false 并在界面配置 secret
+      - SMSBOARD_ALLOW_UNSIGNED=false
+    volumes:
+      - ./data:/app/backend/data
