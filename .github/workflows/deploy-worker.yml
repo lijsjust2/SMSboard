@@ -1,12 +1,6 @@
 name: Deploy Cloudflare Worker
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'worker/**'
-      - 'frontend/**'
-      - '.github/workflows/deploy-worker.yml'
   workflow_dispatch:
 
 permissions:
@@ -41,4 +35,5 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wrangler-version: '4'
           workingDirectory: worker
